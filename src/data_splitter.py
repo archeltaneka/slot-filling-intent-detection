@@ -26,6 +26,7 @@ class SLUDataSplitter:
         groups = self.df['word_sequence'].values
 
         # Group-aware split (keeps identical utterances within the same fold)
+        logging.info(f"Splitting {self.test_size*100:.1f}% of data into validation set and {100-self.test_size*100:.1f}% of data into training set...")
         gss = GroupShuffleSplit(n_splits=1, test_size=self.test_size, random_state=self.random_state)
         train_idx, val_idx = next(gss.split(X, y, groups=groups))
 
