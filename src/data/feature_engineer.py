@@ -33,10 +33,10 @@ class SLUFeatureEngineer:
         )
 
         logging.info("Creating TF-IDF features for train and validation sets...")
-        X_train_tfidf = intent_vectorizer.fit_transform(X_train_text)
-        X_val_tfidf = intent_vectorizer.transform(X_val_text)
+        X_train_intent = intent_vectorizer.fit_transform(X_train_text)
+        X_val_intent = intent_vectorizer.transform(X_val_text)
 
-        return X_train_tfidf, X_val_tfidf
+        return X_train_intent, y_train_intent, X_val_intent, y_val_intent
 
     def _encode_intent(self):
         intent_encoder = LabelEncoder()
@@ -51,7 +51,7 @@ class SLUFeatureEngineer:
         return intent_encoder, slot_label_to_id, id_to_slot_label    
     
     def engineer_features(self):
-        X_train_tfidf, X_val_tfidf = self._create_tfidf_features()
+        X_train_intent, y_train_intent, X_val_intent, y_val_intent = self._create_tfidf_features()
         intent_encoder, slot_label_to_id, id_to_slot_label = self._encode_intent()
         
-        return X_train_tfidf, X_val_tfidf, intent_encoder, slot_label_to_id, id_to_slot_label
+        return X_train_intent, y_train_intent, X_val_intent, y_val_intent, intent_encoder, slot_label_to_id, id_to_slot_label
