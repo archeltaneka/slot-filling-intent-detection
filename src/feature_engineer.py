@@ -12,7 +12,8 @@ logging.basicConfig(
 
 
 class SLUFeatureEngineer:
-    def __init__(self, train_split: pd.DataFrame, val_split: pd.DataFrame):
+    def __init__(self, df: pd.DataFrame, train_split: pd.DataFrame, val_split: pd.DataFrame):
+        self.df = df
         self.train_split = train_split
         self.val_split = val_split
 
@@ -39,11 +40,11 @@ class SLUFeatureEngineer:
 
     def _encode_intent(self):
         intent_encoder = LabelEncoder()
-        intent_encoder.fit(self.train_split['intent'].values)
+        intent_encoder.fit(self.df['intent'].values)
 
         # Slot label encoder (preserve BIO strings as-is for CRF)
         logging.info("Encoding intent labels...")
-        all_slot_labels = sorted({slot for slots in self.train_split['slots'] for slot in slots})
+        all_slot_labels = sorted({slot for slots in self.df['slots'] for slot in slots})
         slot_label_to_id = {label: idx for idx, label in enumerate(all_slot_labels)}
         id_to_slot_label = {idx: label for label, idx in slot_label_to_id.items()}
 
