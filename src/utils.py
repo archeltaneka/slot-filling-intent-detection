@@ -1,5 +1,6 @@
 import os
 import yaml
+import torch
 
 
 def load_config_file(file_path):
@@ -22,3 +23,12 @@ def load_config_file(file_path):
         raise ValueError(f"Error parsing YAML file: {e}")
     except Exception as e:
         raise RuntimeError(f"Unexpected error: {e}")
+
+
+def save_model(model, save_dir, model_name):
+    """
+    Save a PyTorch model to a file in the specified directory.
+    """
+    os.makedirs(save_dir, exist_ok=True)
+    model_path = os.path.join(save_dir, model_name)
+    torch.save(model.state_dict(), model_path)

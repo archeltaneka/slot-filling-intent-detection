@@ -15,7 +15,7 @@ from src.model.baseline import BaselineModel
 from src.model.models import *
 from src.model.trainer import JointTrainer
 from src.evaluation import SLUEvaluator
-from src.utils import load_config_file
+from src.utils import load_config_file, save_model
 
 import warnings
 
@@ -29,6 +29,7 @@ logging.basicConfig(
 if __name__ == '__main__':
     DATA_DIR = "./data"
     CONFIG_PATH = "./config.yaml"
+    SAVE_DIR = 'files/checkpoints'
     config = load_config_file(CONFIG_PATH)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -51,10 +52,11 @@ if __name__ == '__main__':
     intent_to_id = {label: idx for idx, label in enumerate(intent_encoder.classes_)}
 
     # Train a baseline model (CRF Slot Filling + RF Intent)
-    # evaluator = SLUEvaluator(slot_vocab=slot_label_to_id, intent_vocab=intent_to_id)
-    # baseline_model = BaselineModel(slot_label_to_id, intent_encoder)
-    # baseline_model.train(X_train_intent, X_train_slot, y_train_intent, y_train_slot)
-    # baseline_results = baseline_model.evaluate(evaluator, X_val_intent, y_val_intent, X_val_slot, y_val_slot)
+    evaluator = SLUEvaluator(slot_vocab=slot_label_to_id, intent_vocab=intent_to_id)
+    baseline_model = BaselineModel(slot_label_to_id, intent_encoder)
+    baseline_model.train(X_train_intent, X_train_slot, y_train_intent, y_train_slot)
+    baseline_results = baseline_model.evaluate(evaluator, X_val_intent, y_val_intent, X_val_slot, y_val_slot)
+    baseline_model.save(SAVE_DIR + '/baseline_model.joblib')
 
     # Create a dataloader
     PAD_TOKEN = '<PAD>'
@@ -73,6 +75,11 @@ if __name__ == '__main__':
     glove_path = download_glove()
     embed_matrix = load_embeddings(glove_path, word_to_id)    
 
+    # Define losses (intent + slot loss) and device (GPU/CPU)
+    intent_criterion = nn.CrossEntropyLoss()
+    slot_criterion = nn.CrossEntropyLoss(ignore_index=full_slot_mapping['<PAD>'])
+    evaluator = SLUEvaluator(slot_vocab=full_slot_mapping, intent_vocab=intent_to_id)
+
     # Train a joint model (BiLSTM + two heads)
     jointbilstm_model = JointBiLSTM(
         vocab_size=len(word_to_id),
@@ -85,23 +92,18 @@ if __name__ == '__main__':
         dropout=config['dropout'],
         pad_idx=word_to_id[PAD_TOKEN]
     ).to(device)
-
-    # Define losses (intent + slot loss), optimizer, and device (GPU/CPU)
-    intent_criterion = nn.CrossEntropyLoss()
-    slot_criterion = nn.CrossEntropyLoss(ignore_index=full_slot_mapping['<PAD>'])
     optimizer = optim.Adam(jointbilstm_model.parameters(), lr=config['learning_rate'])
-    evaluator = SLUEvaluator(slot_vocab=full_slot_mapping, intent_vocab=intent_to_id)
-    NUM_EPOCHS = config['num_epochs']
-
-    # trainer = JointTrainer(jointbilstm_model, optimizer, slot_criterion, intent_criterion, device, evaluator)
-    # logging.info("Training JointBiLSTM model...")
-    # for epoch in range(NUM_EPOCHS):
-    #     train_loss = trainer.train_epoch(train_loader)
-    #     jointbilstm_results = trainer.evaluate(val_loader)
-    #     logging.info(f"Epoch {epoch+1}/{NUM_EPOCHS}: Train Loss = {train_loss:.4f}, Val Intent Acc: {jointbilstm_results['intent_accuracy']:.4f}, Val Slot F1: {jointbilstm_results['slot_f1']:.4f}, Entity F1: {jointbilstm_results['entity_f1']:.4f}")
-    # logging.info("Final validation evaluation (JointBiLSTM model):")
-    # logging.info(f"Intent accuracy: {jointbilstm_results['intent_accuracy']:.4f}")
-    # logging.info(f"Slot F1: {jointbilstm_results['slot_f1']:.4f} | Entity F1: {jointbilstm_results['entity_f1']:.4f}")
+    trainer = JointTrainer(jointbilstm_model, optimizer, slot_criterion, intent_criterion, device, evaluator)
+    logging.info("Training JointBiLSTM model...")
+    for epoch in range(config['num_epochs']):
+        train_loss = trainer.train_epoch(train_loader)
+        jointbilstm_results = trainer.evaluate(val_loader)
+        logging.info(f"Epoch {epoch+1}/{config['num_epochs']}: Train Loss = {train_loss:.4f}, Val Intent Acc: {jointbilstm_results['intent_accuracy']:.4f}, Val Slot F1: {jointbilstm_results['slot_f1']:.4f}, Entity F1: {jointbilstm_results['entity_f1']:.4f}")
+    logging.info("Final validation evaluation (JointBiLSTM model):")
+    logging.info(f"Intent accuracy: {jointbilstm_results['intent_accuracy']:.4f}")
+    logging.info(f"Slot F1: {jointbilstm_results['slot_f1']:.4f} | Entity F1: {jointbilstm_results['entity_f1']:.4f}")
+    save_model(jointbilstm_model, SAVE_DIR, 'jointbilstm_model.pth')
+    logging.info(f"JointBiLSTM model saved to {SAVE_DIR}")
 
     # Train a joint model (BiLSTM + two heads) with attention
     jointbilstm_attn_model = JointBiLSTMAttn(
@@ -116,15 +118,16 @@ if __name__ == '__main__':
         pad_idx=word_to_id[PAD_TOKEN]
     ).to(device)
     optimizer = optim.Adam(jointbilstm_attn_model.parameters(), lr=config['learning_rate'])
-
     trainer = JointTrainer(jointbilstm_attn_model, optimizer, slot_criterion, intent_criterion, device, evaluator)
     logging.info("Training JointBiLSTM with attention model...")
-    for epoch in range(NUM_EPOCHS):
+    for epoch in range(config['num_epochs']):
         train_loss = trainer.train_epoch(train_loader)
         jointbilstm_attn_results = trainer.evaluate(val_loader)
-        logging.info(f"Epoch {epoch+1}/{NUM_EPOCHS}: Train Loss = {train_loss:.4f}, Val Intent Acc: {jointbilstm_attn_results['intent_accuracy']:.4f}, Val Slot F1: {jointbilstm_attn_results['slot_f1']:.4f}, Entity F1: {jointbilstm_attn_results['entity_f1']:.4f}")
+        logging.info(f"Epoch {epoch+1}/{config['num_epochs']}: Train Loss = {train_loss:.4f}, Val Intent Acc: {jointbilstm_attn_results['intent_accuracy']:.4f}, Val Slot F1: {jointbilstm_attn_results['slot_f1']:.4f}, Entity F1: {jointbilstm_attn_results['entity_f1']:.4f}")
     logging.info("Final validation evaluation (JointBiLSTM with attention model):")
     logging.info(f"Intent accuracy: {jointbilstm_attn_results['intent_accuracy']:.4f}")
     logging.info(f"Slot F1: {jointbilstm_attn_results['slot_f1']:.4f} | Entity F1: {jointbilstm_attn_results['entity_f1']:.4f}")
+    save_model(jointbilstm_attn_model, SAVE_DIR, 'jointbilstm_attn_model.pth')
+    logging.info(f"JointBiLSTM with attention model saved to {SAVE_DIR}")
 
     

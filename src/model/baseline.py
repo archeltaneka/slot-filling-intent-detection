@@ -1,12 +1,11 @@
 import logging
 
+import joblib
 import numpy as np
-import pandas as pd
 from sklearn_crfsuite import CRF
 from sklearn_crfsuite.metrics import flat_classification_report
 from sklearn.ensemble import RandomForestClassifier
 
-from src.evaluation import SLUEvaluator
 
 logging.basicConfig(
     level=logging.INFO,
@@ -96,3 +95,13 @@ class BaselineModel:
         logging.info(f"Baseline Results | Intent Accuracy: {results['intent_accuracy']:.4f} | Slot F1: {results['slot_f1']:.4f} | Entity F1: {results['entity_f1']:.4f}")
         
         return results
+
+    def save(self, filepath):
+        """Saves the entire bundle to a single file."""
+        joblib.dump(self, filepath)
+        print(f"Model saved successfully to {filepath}")
+
+    @staticmethod
+    def load(filepath):
+        """Loads the entire bundle from a file."""
+        return joblib.load(filepath)
