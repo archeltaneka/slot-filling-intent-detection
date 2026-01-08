@@ -64,3 +64,63 @@ class JointBiLSTM(nn.Module):
         intent_logits = self.intent_classifier(pooled)  # [B, num_intents]
         
         return slot_logits, intent_logits
+
+
+# BiLSTM + Attention joint model
+class JointBiLSTMAttn(nn.Module):
+    def __init__(self, vocab_size, embed_dim, hidden_dim, num_layers, num_intents, num_slots,
+                 embedding_matrix=None, dropout=0.3, pad_idx=0):
+        super().__init__()
+        logging.info("Initializing a JointBiLSTM with attention model...")
+        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=pad_idx)
+        if embedding_matrix is not None:
+            with torch.no_grad():
+                self.embedding.weight.copy_(embedding_matrix)
+        
+        self.encoder = nn.LSTM(
+            input_size=embed_dim,
+            hidden_size=hidden_dim,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout if num_layers > 1 else 0.0,
+            bidirectional=True
+        )
+        enc_out_dim = hidden_dim * 2
+        self.dropout = nn.Dropout(dropout)
+        
+        # Scaled dot-product style attention for intent pooling
+        self.attn_vector = nn.Parameter(torch.randn(enc_out_dim))
+        
+        # Slot head
+        self.slot_classifier = nn.Linear(enc_out_dim, num_slots)
+        
+        # Intent head
+        self.intent_classifier = nn.Linear(enc_out_dim, num_intents)
+    
+    def forward(self, x, lengths):
+        mask = (x != 0)  # [B, T]
+        embeds = self.embedding(x)
+        embeds = self.dropout(embeds)
+        
+        packed = nn.utils.rnn.pack_padded_sequence(embeds, lengths.cpu(), batch_first=True, enforce_sorted=False)
+        enc_out_packed, _ = self.encoder(packed)
+        enc_out, _ = nn.utils.rnn.pad_packed_sequence(enc_out_packed, batch_first=True)  # [B, T, 2H]
+        enc_out = self.dropout(enc_out)
+        
+        # Slot logits directly from encoder outputs
+        slot_logits = self.slot_classifier(enc_out)  # [B, T, num_slots]
+        
+        # Attention over time for intent
+        # Compute scores: s_t = h_t · a  (a is attn_vector) --> dot product attention
+        scores = torch.einsum('bth,h->bt', enc_out, self.attn_vector)  # [B, T]
+        # Or we can also use the Bahdanau-style attention using tanh activation function
+        # score = torch.tanh(self.W(enc_out))
+        scores = scores.masked_fill(~mask, float('-inf'))
+        attn_weights = torch.softmax(scores, dim=1)  # [B, T]
+        
+        # Weighted sum
+        context = torch.einsum('bth,bt->bh', enc_out, attn_weights)  # [B, 2H]
+        context = self.dropout(context)
+        intent_logits = self.intent_classifier(context)  # [B, num_intents]
+        
+        return slot_logits, intent_logits
