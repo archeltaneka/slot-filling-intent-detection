@@ -82,3 +82,65 @@ class JointTrainer:
             self.best_results = deepcopy(current_results)
             return True
         return False
+
+
+class BERTTrainer:
+    def __init__(self, model, optimizer, scheduler, slot_criterion, intent_criterion, device, evaluator):
+        self.model = model
+        self.optimizer = optimizer
+        self.scheduler = scheduler
+        self.slot_criterion = slot_criterion
+        self.intent_criterion = intent_criterion
+        self.device = device
+        self.evaluator = evaluator
+        self.best_val_f1 = -1
+
+    def train_epoch(self, loader):
+        self.model.train()
+        total_loss = 0.0
+        for input_ids, mask, slots, intents, _ in loader:
+            input_ids, mask, slots, intents = [x.to(self.device) for x in [input_ids, mask, slots, intents]]
+            
+            self.optimizer.zero_grad()
+            slot_logits, intent_logits = self.model(input_ids, mask)
+            
+            s_loss = self.slot_criterion(slot_logits.view(-1, slot_logits.size(-1)), slots.view(-1))
+            i_loss = self.intent_criterion(intent_logits, intents)
+            
+            loss = s_loss + i_loss
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            self.optimizer.step()
+            total_loss += loss.item()
+            
+        if self.scheduler:
+            self.scheduler.step()
+        return total_loss / len(loader)
+
+    def evaluate(self, loader):
+        self.model.eval()
+        all_preds = {'s': [], 'ts': [], 'i': [], 'ti': [], 'ls': []}
+        
+        with torch.no_grad():
+            for input_ids, mask, slots, intents, lens in loader:
+                input_ids, mask = input_ids.to(self.device), mask.to(self.device)
+                slot_logits, intent_logits = self.model(input_ids, mask)
+                
+                ps = slot_logits.argmax(dim=-1).cpu().tolist()
+                ts = slots.tolist()
+                
+                # Filter special tokens (-100) before evaluation
+                for i, length in enumerate(lens):
+                    # BERT tokens: CLS is index 0, actual content starts at index 1
+                    all_preds['s'].append(ps[i][1:length+1])
+                    all_preds['ts'].append(ts[i][1:length+1])
+                    all_preds['ls'].append(length)
+
+                all_preds['i'].extend(intent_logits.argmax(dim=-1).cpu().tolist())
+                all_preds['ti'].extend(intents.tolist())
+
+        return self.evaluator.evaluate_model(
+            y_true_intents=all_preds['ti'], y_pred_intents=all_preds['i'],
+            y_true_slots=all_preds['ts'], y_pred_slots=all_preds['s'],
+            lengths=all_preds['ls'], verbose=False
+        )

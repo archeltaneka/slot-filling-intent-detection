@@ -2,12 +2,14 @@ import logging
 
 import torch
 import torch.nn as nn
+from transformers import BertTokenizer, BertModel, BertConfig
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S'
 )
+
 
 # Joint BiLSTM with two heads
 class JointBiLSTM(nn.Module):
@@ -122,5 +124,44 @@ class JointBiLSTMAttn(nn.Module):
         context = torch.einsum('bth,bt->bh', enc_out, attn_weights)  # [B, 2H]
         context = self.dropout(context)
         intent_logits = self.intent_classifier(context)  # [B, num_intents]
+        
+        return slot_logits, intent_logits
+
+
+# Joint BERT Model Class
+class JointBERTModel(nn.Module):
+    def __init__(self, bert_model_name, num_intents, num_slots, dropout=0.3):
+        super().__init__()
+        logging.info(f"Initializing JointBERT with {bert_model_name}...")
+        
+        self.bert = BertModel.from_pretrained(bert_model_name)
+        self.bert_config = self.bert.config
+        self.dropout = nn.Dropout(dropout)
+        
+        self.intent_classifier = nn.Linear(self.bert_config.hidden_size, num_intents)
+        self.slot_classifier = nn.Linear(self.bert_config.hidden_size, num_slots)
+        
+        self._init_weights()
+    
+    def _init_weights(self):
+        nn.init.xavier_uniform_(self.intent_classifier.weight)
+        nn.init.zeros_(self.intent_classifier.bias)
+        nn.init.xavier_uniform_(self.slot_classifier.weight)
+        nn.init.zeros_(self.slot_classifier.bias)
+    
+    def forward(self, input_ids, attention_mask, token_type_ids=None):
+        outputs = self.bert(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids,
+            return_dict=True
+        )
+        
+        sequence_output = self.dropout(outputs.last_hidden_state)
+        # Using the [CLS] token representation for intent
+        pooled_output = self.dropout(outputs.pooler_output)
+        
+        slot_logits = self.slot_classifier(sequence_output)
+        intent_logits = self.intent_classifier(pooled_output)
         
         return slot_logits, intent_logits

@@ -11,3 +11,12 @@ num_epochs: 100
 learning_rate: 0.001
 alpha_slot: 1.0
 alpha_intent: 1.0
+
+bert_model_name: bert-base-uncased
+bert_batch_size: 16
+bert_max_len: 128
+bert_num_epochs: 5
+bert_learning_rate: 0.00002
+bert_weight_decay: 0.01
+bert_scheduler_start_factor: 1.0
+bert_scheduler_end_factor: 0.1

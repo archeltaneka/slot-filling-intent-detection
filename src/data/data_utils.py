@@ -17,14 +17,14 @@ UNK_TOKEN = '<UNK>'
 
 
 class SLUDataset(Dataset):
-    def __init__(self, df, word_to_id, slot_label_to_id, intent_to_id):
+    def __init__(self, df, word_to_id, slot_to_id, intent_to_id):
         self.samples = []
         for _, row in df.iterrows():
             tokens = [w.lower() for w in row['words']]
             self.samples.append((tokens, row['slots'], row['intent']))
 
         self.word_to_id = word_to_id # Use the passed-in vocab
-        self.slot_to_id = slot_label_to_id
+        self.slot_to_id = slot_to_id
         self.intent_to_id = intent_to_id
     
     def __len__(self):
@@ -36,6 +36,54 @@ class SLUDataset(Dataset):
         slot_ids = [self.slot_to_id[s] for s in slots]
         intent_id = self.intent_to_id[intent]
         return torch.tensor(word_ids), torch.tensor(slot_ids), torch.tensor(intent_id), len(word_ids)
+
+
+class BERTDataset(Dataset):
+    def __init__(self, df, tokenizer, slot_to_id, intent_to_id, max_length=128):
+        self.df = df
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.slot_to_id = slot_to_id
+        self.intent_to_id = intent_to_id
+    
+    def __len__(self):
+        return len(self.df)
+    
+    def __getitem__(self, idx):
+        sample = self.df.iloc[idx]
+        words, slots, intent = sample['words'], sample['slots'], sample['intent']
+        
+        encoding = self.tokenizer(
+            ' '.join(words),
+            max_length=self.max_length,
+            padding='max_length',
+            truncation=True,
+            return_tensors='pt'
+        )
+        
+        # Alignment logic: Map BERT subwords to our original slot labels
+        slot_labels = []
+        word_idx = 0
+        for token_id in encoding['input_ids'][0]:
+            if token_id in [self.tokenizer.cls_token_id, self.tokenizer.sep_token_id, self.tokenizer.pad_token_id]:
+                slot_labels.append(-100) # Standard PyTorch ignore index
+            else:
+                if word_idx < len(slots):
+                    slot_labels.append(self.slot_to_id[slots[word_idx]])
+                    # If this isn't a subword (starts with ##), move to next original word
+                    token_text = self.tokenizer.convert_ids_to_tokens(token_id.item())
+                    if not token_text.startswith('##'):
+                        word_idx += 1
+                else:
+                    slot_labels.append(self.slot_to_id.get('O', 0))
+        
+        return {
+            'input_ids': encoding['input_ids'].squeeze(0),
+            'attention_mask': encoding['attention_mask'].squeeze(0),
+            'slot_labels': torch.tensor(slot_labels, dtype=torch.long),
+            'intent_label': self.intent_to_id[intent],
+            'original_length': len(words)
+        }
 
 
 def build_vocab(df):
@@ -64,59 +112,11 @@ def get_collate_fn(word_pad_idx, slot_pad_idx):
         return padded_words, padded_slots, torch.stack(intent_ids), torch.tensor(lengths, dtype=torch.long)
     return slucollate
 
-def load_embeddings(embedding_path, word_to_id, embedding_dim=100):
-    if not os.path.exists(embedding_path):
-        logging.info(f"Pretrained embeddings not found at {embedding_path}. Using random init.")
-        embedding_matrix = torch.randn(len(word_to_id), embedding_dim) * 0.05
-        embedding_matrix[0] = torch.zeros(embedding_dim)  # PAD -> zeros
-        return embedding_matrix
-    
-    logging.info(f"Loading pretrained embeddings from {embedding_path} ...")
-    embedding_matrix = torch.randn(len(word_to_id), embedding_dim) * 0.05
-    embedding_matrix[0] = torch.zeros(embedding_dim)
-    hits = 0
-    with open(embedding_path, 'r', encoding='utf-8') as f:
-        for line in f:
-            parts = line.rstrip().split()
-            if len(parts) < embedding_dim + 1:
-                continue
-            token = parts[0].lower()
-            vec = torch.tensor([float(x) for x in parts[1:1+embedding_dim]])
-            if token in word_to_id:
-                embedding_matrix[word_to_id[token]] = vec
-                hits += 1
-    logging.info(f"Embedding coverage: {hits}/{len(word_to_id)} = {hits/len(word_to_id)*100:.1f}%")
-    return embedding_matrix
-
-def download_glove(base_dir='files/embedding', dim=100):
-    os.makedirs(base_dir, exist_ok=True)
-    target_txt = os.path.join(base_dir, f'glove.6B.{dim}d.txt')
-    if os.path.exists(target_txt):
-        logging.info(f"Found pretrained embeddings: {target_txt}")
-        return target_txt
-    zip_url = 'https://nlp.stanford.edu/data/glove.6B.zip'
-    zip_path = os.path.join(base_dir, 'glove.6B.zip')
-    logging.info(f"Downloading GloVe embeddings from {zip_url} ...")
-    try:
-        with requests.get(zip_url, stream=True, timeout=60) as r:
-            r.raise_for_status()
-            with open(zip_path, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-        logging.info("Download complete. Extracting...")
-        with zipfile.ZipFile(zip_path, 'r') as zf:
-            member = f'glove.6B.{dim}d.txt'
-            if member not in zf.namelist():
-                raise FileNotFoundError(f"{member} not found in zip archive.")
-            zf.extract(member, base_dir)
-        logging.info("Extraction complete.")
-    except Exception as e:
-        logging.info(f"Failed to download GloVe: {e}. Proceeding with random init.")
-    finally:
-        if os.path.exists(zip_path):
-            try:
-                os.remove(zip_path)
-            except Exception:
-                pass
-    return target_txt
+def bert_collate_fn(batch):
+    return (
+        torch.stack([item['input_ids'] for item in batch]),
+        torch.stack([item['attention_mask'] for item in batch]),
+        torch.stack([item['slot_labels'] for item in batch]),
+        torch.tensor([item['intent_label'] for item in batch], dtype=torch.long),
+        [item['original_length'] for item in batch]
+    )
