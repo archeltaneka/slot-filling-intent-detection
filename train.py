@@ -43,7 +43,7 @@ if __name__ == '__main__':
     
     # Build intent dataset
     feature_engineer = SLUFeatureEngineer(df, train_df, val_df)
-    X_train_intent, y_train_intent, X_val_intent, y_val_intent, intent_encoder, slot_label_to_id, id_to_slot_label = feature_engineer.engineer_features()
+    X_train_intent, y_train_intent, X_val_intent, y_val_intent, intent_encoder, slot_label_to_id, id_to_slot_label, vectorizer = feature_engineer.engineer_features()
     
     # Build slot dataset
     data_builder = SLUDataBuilder(train_df, val_df)
@@ -56,6 +56,7 @@ if __name__ == '__main__':
     baseline_model = BaselineModel(slot_label_to_id, intent_encoder)
     baseline_model.train(X_train_intent, X_train_slot, y_train_intent, y_train_slot)
     baseline_results = baseline_model.evaluate(evaluator, X_val_intent, y_val_intent, X_val_slot, y_val_slot)
+    baseline_model.vectorizer = vectorizer  # Save vectorizer for inference
     baseline_model.save(SAVE_DIR + '/baseline_model.joblib')
 
     # Create a dataloader
