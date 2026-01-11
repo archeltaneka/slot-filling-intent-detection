@@ -1,3 +1,4 @@
+import json
 import os
 import requests
 import zipfile
@@ -120,3 +121,7 @@ def bert_collate_fn(batch):
         torch.tensor([item['intent_label'] for item in batch], dtype=torch.long),
         [item['original_length'] for item in batch]
     )
+
+def save_vocab(vocab, path):
+    with open(path, 'w') as f:
+        json.dump(vocab, f)

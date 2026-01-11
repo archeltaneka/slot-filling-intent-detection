@@ -9,7 +9,7 @@ from src.data.loader import SLUDataLoader
 from src.data.splitter import SLUDataSplitter
 from src.data.feature_engineer import SLUFeatureEngineer
 from src.data.builder import SLUDataBuilder
-from src.data.data_utils import SLUDataset, BERTDataset, build_vocab, get_collate_fn, bert_collate_fn
+from src.data.data_utils import SLUDataset, BERTDataset, build_vocab, get_collate_fn, bert_collate_fn, save_vocab
 from src.model.baseline import BaselineModel
 from src.model.models import JointBiLSTM, JointBiLSTMAttn, JointBERTModel
 from src.model.trainer import JointTrainer, BERTTrainer
@@ -66,10 +66,14 @@ if __name__ == '__main__':
     train_ds = SLUDataset(train_df, word_to_id, full_slot_mapping, intent_to_id)
     val_ds = SLUDataset(val_df, word_to_id, full_slot_mapping, intent_to_id)
     collate_fn = get_collate_fn(word_to_id[PAD_TOKEN], full_slot_mapping[PAD_TOKEN])
-    train_loader = DataLoader(train_ds, batch_size=64, shuffle=True, collate_fn=collate_fn)
-    val_loader = DataLoader(val_ds, batch_size=64, shuffle=False, collate_fn=collate_fn)
+    train_loader = DataLoader(train_ds, batch_size=config['batch_size'], shuffle=True, collate_fn=collate_fn)
+    val_loader = DataLoader(val_ds, batch_size=config['batch_size'], shuffle=False, collate_fn=collate_fn)
 
     logging.info(f"Vocab size: {len(word_to_id)}, Slot labels: {len(full_slot_mapping)}, Intents: {len(intent_to_id)}")
+    save_vocab(word_to_id, SAVE_DIR + '/word_to_id.json')
+    save_vocab(full_slot_mapping, SAVE_DIR + '/full_slot_mapping.json')
+    save_vocab(intent_to_id, SAVE_DIR + '/intent_to_id.json')
+    logging.info(f"Vocab saved to {SAVE_DIR}")
 
     # Load embeddings
     glove_path = download_glove()
