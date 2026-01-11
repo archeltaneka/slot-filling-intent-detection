@@ -3,8 +3,12 @@ import requests
 import zipfile
 import logging
 
+import joblib
 import torch
 from transformers import BertTokenizer, BertModel, BertConfig
+
+from src.model.models import JointBiLSTM, JointBiLSTMAttn, JointBERTModel
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,6 +16,40 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
+
+class ModelLoader:
+    def __init__(self, config, device, vocabs):
+        self.config = config
+        self.device = device
+        self.vocabs = vocabs
+
+    def load_baseline(self, path):
+        return joblib.load(path)
+
+    def load_bilstm(self, path, attn=False):
+        model_class = JointBiLSTMAttn if attn else JointBiLSTM
+        model = model_class(
+            vocab_size=len(self.vocabs['word_to_id']),
+            embed_dim=self.config['embed_dim'],
+            hidden_dim=self.config['hidden_dim'],
+            num_layers=self.config['num_layers'],
+            num_slots=len(self.vocabs['slot_to_id']),
+            num_intents=len(self.vocabs['intent_to_id']),
+            dropout=self.config['dropout'],
+            pad_idx=self.vocabs['word_to_id'].get('<PAD>', 0)
+        )
+        model.load_state_dict(torch.load(path, map_location=self.device))
+        return model.to(self.device).eval()
+
+    def load_bert(self, path):
+        model = JointBERTModel(
+            bert_model_name=self.config['bert_model_name'],
+            num_intents=len(self.vocabs['intent_to_id']),
+            num_slots=len(self.vocabs['slot_to_id']),
+            dropout=self.config['dropout']
+        )
+        model.load_state_dict(torch.load(path, map_location=self.device))
+        return model.to(self.device).eval()
 
 def load_embeddings(embedding_path, word_to_id, embedding_dim=100):
     if not os.path.exists(embedding_path):

@@ -99,7 +99,7 @@ class JointBiLSTMAttn(nn.Module):
         # Intent head
         self.intent_classifier = nn.Linear(enc_out_dim, num_intents)
     
-    def forward(self, x, lengths):
+    def forward(self, x, lengths, return_attention=False):
         mask = (x != 0)  # [B, T]
         embeds = self.embedding(x)
         embeds = self.dropout(embeds)
@@ -125,6 +125,8 @@ class JointBiLSTMAttn(nn.Module):
         context = self.dropout(context)
         intent_logits = self.intent_classifier(context)  # [B, num_intents]
         
+        if return_attention:
+            return slot_logits, intent_logits, attn_weights
         return slot_logits, intent_logits
 
 
@@ -149,12 +151,13 @@ class JointBERTModel(nn.Module):
         nn.init.xavier_uniform_(self.slot_classifier.weight)
         nn.init.zeros_(self.slot_classifier.bias)
     
-    def forward(self, input_ids, attention_mask, token_type_ids=None):
+    def forward(self, input_ids, attention_mask, token_type_ids=None, return_attention=False):
         outputs = self.bert(
             input_ids=input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
-            return_dict=True
+            return_dict=True,
+            output_attentions=return_attention
         )
         
         sequence_output = self.dropout(outputs.last_hidden_state)
@@ -164,4 +167,6 @@ class JointBERTModel(nn.Module):
         slot_logits = self.slot_classifier(sequence_output)
         intent_logits = self.intent_classifier(pooled_output)
         
+        if return_attention:
+            return slot_logits, intent_logits, outputs.attentions
         return slot_logits, intent_logits
