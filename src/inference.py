@@ -194,11 +194,10 @@ def predict_baseline(model, text, vocabs):
         X_intent = model.vectorizer.transform([text_joined])
         intent_pred = model.rf_model.predict(X_intent)[0]
         
-        # Decode using intent_encoder if available
-        if hasattr(model, 'intent_encoder'):
-            intent_name = model.intent_encoder.inverse_transform([intent_pred])[0]
-        else:
-            intent_name = vocabs['id_to_intent'].get(intent_pred, 'Unknown')
+        # The RF model outputs integer predictions
+        # Use vocabs to decode instead of intent_encoder to avoid label mismatch
+        intent_id = vocabs['intent_to_id'].get(intent_pred, 'Unknown')
+        intent_name = vocabs['id_to_intent'].get(intent_id, 'Unknown')
     else:
         # Fallback: create a simple TF-IDF vectorizer on the fly
         # This won't be as accurate but will give a prediction
