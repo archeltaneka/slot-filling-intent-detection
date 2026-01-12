@@ -193,6 +193,8 @@ def predict_baseline(model, text, vocabs):
         text_joined = ' '.join(tokens)
         X_intent = model.vectorizer.transform([text_joined])
         intent_pred = model.rf_model.predict(X_intent)[0]
+        intent_probs = model.rf_model.predict_proba(X_intent)[0]
+        intent_proba = np.max(intent_probs)
         
         # The RF model outputs integer predictions
         # Use vocabs to decode instead of intent_encoder to avoid label mismatch
@@ -218,6 +220,7 @@ def predict_baseline(model, text, vocabs):
     
     return {
         'intent': intent_name,
+        'conf': intent_proba,
         'slots': list(zip(tokens, slot_pred)),
         'attention': token_importance,
         'tokens': tokens
@@ -241,6 +244,7 @@ def predict_bilstm(model, text, vocabs, device):
         
         # Get predictions
         intent_pred = intent_logits.argmax(dim=1).item()
+        intent_proba = intent_logits.softmax(dim=1).cpu().numpy()[0][intent_pred]
         slot_preds = slot_logits.argmax(dim=2).squeeze(0).cpu().numpy()
     
     # Compute gradient saliency
@@ -252,6 +256,7 @@ def predict_bilstm(model, text, vocabs, device):
     
     return {
         'intent': intent_name,
+        'conf': intent_proba,
         'slots': list(zip(tokens, slot_names)),
         'attention': saliency,
         'tokens': tokens
@@ -275,6 +280,7 @@ def predict_bilstm_attn(model, text, vocabs, device):
         
         # Get predictions
         intent_pred = intent_logits.argmax(dim=1).item()
+        intent_proba = intent_logits.softmax(dim=1).cpu().numpy()[0][intent_pred]
         slot_preds = slot_logits.argmax(dim=2).squeeze(0).cpu().numpy()
         
         # Extract attention weights
@@ -286,6 +292,7 @@ def predict_bilstm_attn(model, text, vocabs, device):
     
     return {
         'intent': intent_name,
+        'conf': intent_proba,
         'slots': list(zip(tokens, slot_names)),
         'attention': attention[:len(tokens)],
         'tokens': tokens
@@ -311,6 +318,7 @@ def predict_bert(model, tokenizer, text, vocabs, device, max_len=128):
         
         # Get predictions
         intent_pred = intent_logits.argmax(dim=1).item()
+        intent_proba = intent_logits.softmax(dim=1).cpu().numpy()[0][intent_pred]
         slot_preds = slot_logits.argmax(dim=2).squeeze(0).cpu().numpy()
     
     # Process BERT attentions - average across all heads and layers for simplicity
@@ -344,6 +352,7 @@ def predict_bert(model, tokenizer, text, vocabs, device, max_len=128):
     
     return {
         'intent': intent_name,
+        'conf': intent_proba,
         'slots': list(zip(tokens, slot_names)),
         'attention': cls_attention,
         'tokens': tokens,
