@@ -206,17 +206,26 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    # Header
+    # 1. Header & Context
     st.markdown('<h1 class="main-title">🧠 SLU Multi-Model Intelligence Dashboard</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">Compare intent detection and slot filling across multiple neural architectures</p>', unsafe_allow_html=True)
     
-    # Load resources
+    # NEW: Brief Description and Instructions
+    st.markdown("""
+    ### Welcome to the SLU Benchmarking Suite
+    This dashboard allows you to compare four different Natural Language Understanding (NLU) architectures 
+    on two core tasks: **Intent Detection** (the 'what') and **Slot Filling** (the 'who/where/when').
+    
+    **How to use:**
+    1. Enter a sentence like *"book a flight to Paris"* in the input box below.
+    2. Click **Analyze** to see how the models process the text side-by-side.
+    3. Observe the **Confidence** in Intent, the **Tags** in Slots, and the **Heatmap** in Attention.
+    """)
+    
     with st.spinner("Loading models..."):
         config, models, vocabs, tokenizer, device = load_all_resources()
     
-    # Input section
+    # 2. Input section
     col1, col2 = st.columns([5, 1])
-    
     with col1:
         user_input = st.text_input(
             "Input Utterance",
@@ -224,175 +233,67 @@ def main():
             label_visibility="collapsed",
             placeholder="Enter your utterance here..."
         )
-    
     with col2:
         run_btn = st.button("🚀 Analyze", use_container_width=True)
-    
-    # Example queries
-    with st.expander("💡 Try Example Queries"):
-        examples = [
-            "book a flight from London to Paris tomorrow",
-            "show me restaurants near times square",
-            "what's the weather in seattle this weekend",
-            "i need a hotel in tokyo for 3 nights"
-        ]
-        cols = st.columns(4)
-        for idx, (col, example) in enumerate(zip(cols, examples)):
-            if col.button(f"Example {idx+1}", key=f"ex_{idx}", use_container_width=True):
-                user_input = example
-                st.rerun()
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    if run_btn and user_input:
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        tab_intent, tab_slots, tab_attn = st.tabs([
-            "🎯 Intent Predictions", 
-            "🏷️ Slot Predictions", 
-            "⚡ Attention & Features"
-        ])
 
-        # Run all models
+    # Prepare data for rendering
+    model_names = ['Baseline', 'JointBiLSTM', 'JointBiLSTM+Attn', 'JointBERT']
+    
+    # If button is NOT clicked, we create a 'dummy' results object with empty values
+    if not run_btn:
+        tokens = user_input.split() if user_input else ["Enter", "a", "query"]
+        display_results = {
+            name: {
+                'intent': '---', 
+                'conf': 0.0, 
+                'slots': ['O'] * len(tokens), 
+                'attention': [0.0] * len(tokens)
+            } for name in model_names
+        }
+        st.caption("✨ Results will update here after you click Analyze.")
+    else:
+        # Actual Inference Logic
         tokens = user_input.split()
-        results = {}
+        display_results = {}
+        for name in model_names:
+            try:
+                if name == 'Baseline':
+                    display_results[name] = predict_baseline(models[name], user_input, vocabs)
+                elif name == 'JointBiLSTM':
+                    display_results[name] = predict_bilstm(models[name], user_input, vocabs, device)
+                elif name == 'JointBiLSTM+Attn':
+                    display_results[name] = predict_bilstm_attn(models[name], user_input, vocabs, device)
+                elif name == 'JointBERT':
+                    display_results[name] = predict_bert(models[name], tokenizer, user_input, vocabs, device)
+            except:
+                display_results[name] = None
 
-        try:
-            results['Baseline'] = predict_baseline(models['Baseline'], user_input, vocabs)
-        except Exception as e:
-            st.error(f"Error running Baseline model: {str(e)}")
-            results['Baseline'] = None
-        
-        try:
-            results['JointBiLSTM'] = predict_bilstm(models['JointBiLSTM'], user_input, vocabs, device)
-        except Exception as e:
-            st.error(f"Error running JointBiLSTM model: {str(e)}")
-            results['JointBiLSTM'] = None
-        
-        try:
-            results['JointBiLSTM+Attn'] = predict_bilstm_attn(models['JointBiLSTM+Attn'], user_input, vocabs, device)
-        except Exception as e:
-            st.error(f"Error running JointBiLSTM+Attn model: {str(e)}")
-            results['JointBiLSTM+Attn'] = None
-        
-        try:
-            results['JointBERT'] = predict_bert(models['JointBERT'], tokenizer, user_input, vocabs, device)
-        except Exception as e:
-            st.error(f"Error running JointBERT model: {str(e)}")
-            results['JointBERT'] = None
+    # 3. SIDE-BY-SIDE COMPARISON SECTIONS
+    st.markdown("---")
+    
+    # SECTION: INTENT
+    st.markdown('### 🎯 Intent Detection')
+    st.write("> **How to read:** Compares the predicted category. Higher percentages indicate higher model certainty.")
+    for name in model_names:
+        if display_results[name]:
+            components.html(create_model_row_html(name, tokens, display_results[name], "intent"), height=90)
 
-        with tab_intent:
-            for model_name in ['Baseline', 'JointBiLSTM', 'JointBiLSTM+Attn', 'JointBERT']:
-                if results[model_name]:
-                    components.html(
-                        create_model_row_html(
-                            model_name,
-                            tokens,
-                            results[model_name],
-                            "intent"
-                        ),
-                        height=80,
-                        scrolling=False
-                    )
+    # SECTION: SLOTS
+    st.markdown('### 🏷️ Slot Filling (NER)')
+    st.write("> **How to read:** Highlights specific entities. Red/Green/Purple chips represent recognized slots.")
+    for name in model_names:
+        if display_results[name]:
+            components.html(create_model_row_html(name, tokens, display_results[name], "slots"), height=130)
 
-        with tab_slots:
-            st.markdown('<div class="section-header">Slot Filling (Named Entity Recognition)</div>', unsafe_allow_html=True)
-            
-            # Legend for slot colors
-            st.markdown("""
-            <div class="legend-box">
-                <div class="legend-title">Slot Type Legend</div>
-                <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px;">
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #EF553B;"></div>
-                        <span>Origin/Departure</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #00CC96;"></div>
-                        <span>Destination</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #AB63FA;"></div>
-                        <span>Date/Time</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #FFA15A;"></div>
-                        <span>Entity Type 4</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #f3f4f6;"></div>
-                        <span>Outside (O)</span>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-            for model_name in ['Baseline', 'JointBiLSTM', 'JointBiLSTM+Attn', 'JointBERT']:
-                if results[model_name]:
-                    components.html(
-                        create_model_row_html(
-                            model_name,
-                            tokens,
-                            results[model_name],
-                            "slots"
-                        ),
-                        height=150,
-                        scrolling=False
-                    )
-
-        with tab_attn:
-            st.markdown('<div class="section-header">Attention Weights & Feature Importance</div>', unsafe_allow_html=True)
-            st.markdown("""
-            <div class="legend-box">
-                <div class="legend-title">Interpreting Attention Scores</div>
-                <p style="margin: 0; font-size: 13px; color: #6b7280; line-height: 1.6;">
-                    Darker purple indicates higher attention weight. These scores reveal which tokens 
-                    the model focuses on when making predictions. Values are normalized between 0 and 1.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            for model_name in ['Baseline', 'JointBiLSTM', 'JointBiLSTM+Attn', 'JointBERT']:
-                if results[model_name]:
-                    components.html(
-                        create_model_row_html(
-                            model_name,
-                            tokens,
-                            results[model_name],
-                            "attention"
-                        ),
-                        height=120,
-                        scrolling=False
-                    )
-        
-        # Model comparison info
-        st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("📊 Model Architecture Comparison"):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("""
-                **JointBERT**
-                - Transformer-based pre-trained model
-                - Multi-head self-attention mechanism
-                - Best for context understanding
-                
-                **JointBiLSTM+Attn**
-                - BiLSTM with attention layer
-                - Explicit attention weights
-                - Good interpretability
-                """)
-            with col2:
-                st.markdown("""
-                **JointBiLSTM**
-                - Bidirectional LSTM architecture
-                - Gradient-based saliency
-                - Efficient inference
-                
-                **Baseline**
-                - CRF for slots + Random Forest for intent
-                - Traditional ML approach
-                - Fast and lightweight
-                """)
+    # SECTION: ATTENTION
+    st.markdown('### ⚡ Attention & Feature Importance')
+    st.write("> **How to read:** Darker purple indicates the 'keywords' the model prioritized for its decision.")
+    for name in model_names:
+        # Check if the model actually supports attention visualization
+        if display_results[name] and (name == 'JointBiLSTM+Attn' or name == 'JointBERT' or not run_btn):
+            components.html(create_model_row_html(name, tokens, display_results[name], "attention"), height=110)
+        elif run_btn:
+            st.text(f"Notice: {name} uses internal feature importance rather than attention heads.")
 
 
 if __name__ == "__main__":
