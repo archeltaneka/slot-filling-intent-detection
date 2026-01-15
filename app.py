@@ -164,6 +164,34 @@ st.markdown("""
         border-radius: 4px;
         margin-right: 6px;
     }
+
+    /* Footer Styling */
+    .footer {
+        position: relative;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: white;
+        color: #6b7280;
+        text-align: center;
+        padding: 2rem 0;
+        border-top: 1px solid #e5e7eb;
+        margin-top: 4rem;
+    }
+    .footer a {
+        color: #1E3A8A;
+        text-decoration: none;
+        margin: 0 15px;
+        font-weight: 500;
+        transition: color 0.2s ease;
+    }
+    .footer a:hover {
+        color: #3B82F6;
+    }
+    .footer-icons {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -207,7 +235,7 @@ def main():
     """, unsafe_allow_html=True)
 
     # Header & Context
-    st.markdown('<h1 class="main-title">🧠 Slot Filling & Intent Detection Multi-Model Intelligence</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">🧠 Slot Filling & Intent Detection</h1>', unsafe_allow_html=True)
     
     tab_intro, tab_analysis = st.tabs(["📄 Project Background", "🚀 Live Model Analysis"])
 
@@ -218,6 +246,8 @@ def main():
         ### Welcome!
         In this project, we analyze and compare different approaches for **Slot Filling** and **Intent Detection**, 
         fundamental tasks in Natural Language Understanding (NLU).
+
+        Project repo: https://github.com/archeltaneka/slot-filling-intent-detection
         
         > **Academic Submission:** This project was submitted for **FIT5149 - Applied Data Analysis** as part of a Master's degree at **Monash University**.
         """)
@@ -360,7 +390,7 @@ def main():
         ### 🏷️ Slot Filling (NER)
         There are 121 unique slot labels using BIO tagging scheme.
         """)
-        st.write("> **How to read:** Highlights specific entities. Red/Green/Purple chips represent recognized slots.")
+        st.write("> **How to read:** Highlights specific entities. Red/Green/Purple/Blue chips represent recognized slots.")
 
         slot_desc = {
             'Baseline': "Utilizes Conditional Random Fields (CRF) to model dependencies between neighboring labels.",
@@ -378,12 +408,12 @@ def main():
                 # BERT models typically prepend [CLS]. We check if the first token is [CLS] 
                 # or if the slot list is longer than the original input tokens.
                 if name == 'JointBERT':
-                    # Option 1: If your predict_bert returns the [CLS] token in the 'slots' list
+                    # If the predict_bert returns the [CLS] token in the 'slots' list
                     # We slice from index 1 to end.
                     if len(display_slots) > len(tokens):
                         display_slots = display_slots[1:]
                     
-                    # If your 'tokens' list for BERT specifically includes '[CLS]' at index 0:
+                    # If the 'tokens' list for BERT specifically includes '[CLS]' at index 0:
                     display_tokens = display_tokens[1:]
 
                 # Create a modified data object for the visualization
@@ -416,6 +446,21 @@ def main():
                 components.html(create_model_row_html(name, tokens, display_results[name], "attention"), height=110)
             elif run_btn:
                 st.text(f"Notice: {name} uses internal feature importance rather than attention heads.")
+
+    # Footer Section
+    st.markdown("""
+        <div class="footer">
+            <p>Built with ❤️ as part of FIT5149 - Applied Data Analysis</p>
+            <div class="footer-links">
+                <a href="https://github.com/archeltaneka" target="_blank">📂 GitHub</a>
+                <a href="https://archeltaneka.github.io" target="_blank">🌐 My Website</a>
+                <a href="https://linkedin.com/in/archel-taneka-sutanto" target="_blank">🔗 LinkedIn</a>
+            </div>
+            <p style="font-size: 0.8rem; margin-top: 15px;">
+                © 2026 Archel Taneka Sutanto | All rights reserved.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
 
 
 if __name__ == "__main__":
