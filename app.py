@@ -125,44 +125,124 @@ st.markdown("""
         letter-spacing: 0.3px;
     }
     
-    /* Info styling */
-    .stAlert {
-        border-radius: 8px;
-        border: 1px solid #e5e7eb;
-        background: #f9fafb;
+    /* Model Card Container */
+    .model-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        border-top: 4px solid #1a1a1a; /* Default border */
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
     }
-    
-    /* Legend box */
-    .legend-box {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 16px 20px;
-        margin-bottom: 20px;
+
+    /* Hover effect matching the inference rows */
+    .model-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 20px rgba(0, 0, 0, 0.1);
     }
-    
-    .legend-title {
-        font-size: 14px;
+
+    /* Specific Model Color Borders (Syncing with theme_colors in visualization.py) */
+    .card-baseline { border-top-color: #374151; }
+    .card-bilstm { border-top-color: #92400E; }
+    .card-attn { border-top-color: #065F46; }
+    .card-bert { border-top-color: #1E3A8A; }
+
+    .card-title {
+        font-size: 1.1rem;
         font-weight: 600;
-        color: #374151;
         margin-bottom: 8px;
+        color: #1f2937;
+    }
+
+    .card-tag {
+        font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        font-weight: 700;
+        margin-bottom: 12px;
+        display: block;
     }
-    
-    .legend-item {
-        display: inline-flex;
+
+    /* Input Container */
+    .input-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        border: 1px solid #f0f2f6;
+    }
+
+    /* Modernized Search Bar */
+    div[data-baseweb="input"] {
+        border-radius: 12px !important;
+        border: 1px solid #e5e7eb !important;
+        padding: 4px 8px !important;
+        transition: all 0.3s ease !important;
+    }
+
+    div[data-baseweb="input"]:focus-within {
+        border-color: #1E3A8A !important;
+        box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.1) !important;
+    }
+
+    /* Refined Button */
+    .stButton > button {
+        width: 100%;
+        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 10px !important;
+        padding: 14px 24px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 15px rgba(30, 58, 138, 0.2) !important;
+    }
+
+    /* Style for the Information Background Wrapper */
+    .info-wrapper {
+        background-color: #f8fafc; /* Very light grey-blue */
+        margin: -2rem -4rem 2rem -4rem; /* Extend to edges of container */
+        padding: 3rem 4rem;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    /* Modern Section Divider with Text */
+    .section-divider {
+        display: flex;
         align-items: center;
-        margin-right: 16px;
-        font-size: 13px;
-        color: #6b7280;
+        text-align: center;
+        margin: 3rem 0;
+        color: #94a3b8;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
     }
-    
-    .legend-color {
-        width: 20px;
-        height: 20px;
-        border-radius: 4px;
-        margin-right: 6px;
+
+    .section-divider::before, .section-divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .section-divider:not(:empty)::before { margin-right: 1.5rem; }
+    .section-divider:not(:empty)::after { margin-left: 1.5rem; }
+
+    /* Target the input-container to make it "pop" more */
+    .input-container {
+        background: white !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02) !important;
+        transform: translateY(-50px); /* Overlap the grey section slightly */
+        z-index: 10;
     }
 
     /* Footer Styling */
@@ -252,7 +332,7 @@ def main():
         > **Academic Submission:** This project was submitted for **FIT5149 - Applied Data Analysis** as part of a Master's degree at **Monash University**.
         """)
         
-        # Dataset Section (Compressed)
+        # Dataset Section
         st.markdown("""
         ### 📊 The ATIS Dataset
         This project uses the ATIS (Airline Travel Information Systems) dataset, a well-known benchmark dataset for slot filling and intent detection tasks. 
@@ -279,57 +359,87 @@ def main():
     with tab_analysis:
         with st.spinner("Loading models..."):
             config, models, vocabs, tokenizer, device = load_all_resources()
-        
+                
         st.markdown("### 🔍 About the Models")
         m_col1, m_col2, m_col3, m_col4 = st.columns(4)
 
         with m_col1:
             st.markdown("""
-            <div style="border: 1px solid #ddd; padding: 15px; border-radius: 10px; height: 100%;">
-                <h4>Baseline</h4>
-                <p style='font-size: 0.85em; color: #555;'><b>Type:</b> Statistical ML</p>
-                <p style='font-size: 0.9em;'>Uses a combination of Random Forest for intent and CRF for slots. Fast and lightweight, but struggles with complex word dependencies.</p>
+            <div class="model-card card-baseline">
+                <span class="card-tag" style="color: #374151;">Statistical ML</span>
+                <div class="card-title">Baseline</div>
+                <p style="font-size: 0.9rem; color: #4b5563;">
+                    A traditional approach using <b>Random Forest</b> for intent and <b>CRF</b> for slots. 
+                    Fast and efficient, it serves as the performance floor for our benchmarks.
+                </p>
             </div>
             """, unsafe_allow_html=True)
 
         with m_col2:
             st.markdown("""
-            <div style="border: 1px solid #ddd; padding: 15px; border-radius: 10px; height: 100%;">
-                <h4>JointBiLSTM</h4>
-                <p style='font-size: 0.85em; color: #555;'><b>Type:</b> Recurrent Neural Net</p>
-                <p style='font-size: 0.9em;'>Processes text in both directions. The architecture introduces two heads, one for intent and one for slots. Good at capturing sequential context but treats all words with equal importance.</p>
+            <div class="model-card card-bilstm">
+                <span class="card-tag" style="color: #92400E;">Recurrent Neural Net</span>
+                <div class="card-title">JointBiLSTM</div>
+                <p style="font-size: 0.9rem; color: #4b5563;">
+                    A bidirectional RNN that captures <b>sequential context</b>. It learns word 
+                    dependencies by looking at both the past and future of the token stream.
+                </p>
             </div>
             """, unsafe_allow_html=True)
 
         with m_col3:
             st.markdown("""
-            <div style="border: 1px solid #ddd; padding: 15px; border-radius: 10px; height: 100%;">
-                <h4>BiLSTM+Attn</h4>
-                <p style='font-size: 0.85em; color: #555;'><b>Type:</b> RNN with Attention</p>
-                <p style='font-size: 0.9em;'>Similar with the JointBILSTM model, but it includes an <b>Attention Mechanism</b> that helps the model 'focus' on key trigger words like verbs or city names.</p>
+            <div class="model-card card-attn">
+                <span class="card-tag" style="color: #065F46;">RNN + Attention</span>
+                <div class="card-title">JointBiLSTM+Attn</div>
+                <p style="font-size: 0.9rem; color: #4b5563;">
+                    Adds an <b>Attention mechanism</b> to the BiLSTM, allowing the model to 
+                    mathematically focus on specific key tokens like city names or verbs.
+                </p>
             </div>
             """, unsafe_allow_html=True)
 
         with m_col4:
             st.markdown("""
-            <div style="border: 1px solid #ddd; padding: 15px; border-radius: 10px; height: 100%;">
-                <h4>JointBERT</h4>
-                <p style='font-size: 0.85em; color: #555;'><b>Type:</b> Transformer</p>
-                <p style='font-size: 0.9em;'>State-of-the-art model pre-trained on billions of words. High accuracy on ambiguous queries due to deep context awareness.</p>
+            <div class="model-card card-bert">
+                <span class="card-tag" style="color: #1E3A8A;">Transformer</span>
+                <div class="card-title">JointBERT</div>
+                <p style="font-size: 0.9rem; color: #4b5563;">
+                    State-of-the-art <b>Transformer architecture</b>. Uses deep self-attention 
+                    and pre-trained embeddings to understand complex linguistic nuances.
+                </p>
             </div>
             """, unsafe_allow_html=True)
 
         # Input section
-        col1, col2 = st.columns([5, 1])
-        with col1:
+        st.markdown('<div class="section-divider">Model Analysis Workshop</div>', unsafe_allow_html=True)
+        _, center_col, _ = st.columns([1, 2, 1])
+        with center_col:
+            # Using a label for accessibility but hiding it visually for a clean look
             user_input = st.text_input(
-                "Input Utterance",
-                "book a flight from London to Paris tomorrow",
-                label_visibility="collapsed",
-                placeholder="Enter your utterance here..."
+                "Enter Utterance",
+                value="book a flight from London to Paris tomorrow",
+                placeholder="e.g., show me flights from Boston to New York",
+                label_visibility="collapsed"
             )
-        with col2:
-            run_btn = st.button("🚀 Analyze", use_container_width=True)
+            
+            # Vertical spacing
+            st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+            
+            run_btn = st.button("🚀 Run Multi-Model Analysis", use_container_width=True)
+            
+        # Example chips below the main input
+        st.markdown("<br>", unsafe_allow_html=True)
+        _, example_col, _ = st.columns([1, 3, 1])
+        with example_col:
+            st.write("✨ **Try these:**")
+            ex_cols = st.columns(3)
+            if ex_cols[0].button("📍 Distance query", use_container_width=True):
+                user_input = "how far is the airport from downtown"
+            if ex_cols[1].button("✈️ Airline info", use_container_width=True):
+                user_input = "which airlines fly from dallas"
+            if ex_cols[2].button("💰 Fare check", use_container_width=True):
+                user_input = "cheapest flight to miami"
 
         # Prepare data for rendering
         model_names = ['Baseline', 'JointBiLSTM', 'JointBiLSTM+Attn', 'JointBERT']
