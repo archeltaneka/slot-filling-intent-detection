@@ -303,8 +303,14 @@ def load_all_resources():
     
     return config, models, vocabs, tokenizer, device
 
-
 def main():
+    # Initialize the session state for the input if it doesn't exist
+    if 'query_input' not in st.session_state:
+        st.session_state.query_input = "book a flight from London to Paris tomorrow"
+
+    def set_query(text):
+        st.session_state.query_input = text
+
     st.set_page_config(layout="wide", page_title="Slot Filling & Intent Detection Multi-Model Intelligence", page_icon="🧠")
     st.markdown("""
         <style>
@@ -411,35 +417,39 @@ def main():
             </div>
             """, unsafe_allow_html=True)
 
-        # Input section
         st.markdown('<div class="section-divider">Model Analysis Workshop</div>', unsafe_allow_html=True)
         _, center_col, _ = st.columns([1, 2, 1])
+
         with center_col:
-            # Using a label for accessibility but hiding it visually for a clean look
             user_input = st.text_input(
                 "Enter Utterance",
-                value="book a flight from London to Paris tomorrow",
+                key="query_input", 
                 placeholder="e.g., show me flights from Boston to New York",
                 label_visibility="collapsed"
             )
             
-            # Vertical spacing
             st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-            
             run_btn = st.button("🚀 Run Multi-Model Analysis", use_container_width=True)
-            
-        # Example chips below the main input
+
+        # Example chips
         st.markdown("<br>", unsafe_allow_html=True)
         _, example_col, _ = st.columns([1, 3, 1])
+
         with example_col:
             st.write("✨ **Try these:**")
             ex_cols = st.columns(3)
-            if ex_cols[0].button("📍 Distance query", use_container_width=True):
-                user_input = "how far is the airport from downtown"
-            if ex_cols[1].button("✈️ Airline info", use_container_width=True):
-                user_input = "which airlines fly from dallas"
-            if ex_cols[2].button("💰 Fare check", use_container_width=True):
-                user_input = "cheapest flight to miami"
+            
+            ex_cols[0].button("📍 Distance query", use_container_width=True, 
+                             on_click=set_query, args=("how far is the airport from downtown",))
+            
+            ex_cols[1].button("✈️ Airline info", use_container_width=True, 
+                             on_click=set_query, args=("which airlines fly from dallas",))
+            
+            ex_cols[2].button("💰 Fare check", use_container_width=True, 
+                             on_click=set_query, args=("cheapest flight to miami",))
+
+        # Use the value from session state for processing
+        current_query = st.session_state.query_input
 
         # Prepare data for rendering
         model_names = ['Baseline', 'JointBiLSTM', 'JointBiLSTM+Attn', 'JointBERT']
