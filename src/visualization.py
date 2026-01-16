@@ -99,7 +99,8 @@ def create_model_row_html(model_name, tokens, data, mode):
                 align-items: center;
                 gap: 12px;
                 box-shadow: 0 2px 8px {color}30;
-            ">
+                transition: transform 0.15s ease;   
+            " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                 <span style="font-size: 16px; font-weight: 600; letter-spacing: 0.3px;">{intent_name}</span>
                 <span style="
                     background: rgba(255,255,255,0.2);

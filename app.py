@@ -375,7 +375,7 @@ def main():
                 <span class="card-tag" style="color: #374151;">Statistical ML</span>
                 <div class="card-title">Baseline</div>
                 <p style="font-size: 0.9rem; color: #4b5563;">
-                    A traditional approach using <b>Random Forest</b> for intent and <b>CRF</b> for slots. 
+                    A traditional approach using <b>Random Forest</b> for intent and <b>Conditional Random Fields (CRF)</b> for slots. 
                     Fast and efficient, it serves as the performance floor for our benchmarks.
                 </p>
             </div>
