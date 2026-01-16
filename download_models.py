@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 if __name__ == "__main__":
     REPO_ID = "archeltaneka/slot-filling-intent-detection" 
-    LOCAL_CHECKPOINT_DIR = "files/checkpoints_test"
+    LOCAL_CHECKPOINT_DIR = "files/checkpoints"
     
     # Models to be downloaded
     MODELS_TO_DOWNLOAD = [
