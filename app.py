@@ -382,8 +382,6 @@ def main():
         In this project, we analyze and compare different approaches for **Slot Filling** and **Intent Detection**, 
         fundamental tasks in Natural Language Understanding (NLU).
 
-        Project repo: https://github.com/archeltaneka/slot-filling-intent-detection
-        
         > **Academic Submission:** This project was submitted for **FIT5149 - Applied Data Analysis** as part of a Master's degree at **Monash University**.
         """)
 
