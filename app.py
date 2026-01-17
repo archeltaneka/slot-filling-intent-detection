@@ -1,3 +1,4 @@
+import os
 import json
 import streamlit as st
 import torch
@@ -14,6 +15,7 @@ from src.visualization import (
     create_model_info_html,
     create_model_row_html
 )
+from huggingface_hub import hf_hub_download
 
 
 st.set_page_config(layout="wide", page_title="SLU Multi-Model Dashboard", page_icon="🧠")
@@ -49,6 +51,16 @@ st.markdown("""
         font-size: 1rem;
         font-weight: 300;
         margin-bottom: 2rem;
+    }
+
+    /* Resource Card */
+    .resource-card {
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .resource-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+        filter: brightness(1.1);
     }
     
     /* Input styling */
@@ -276,6 +288,43 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 @st.cache_resource
+def download_vocabularies():
+    REPO_ID = "archeltaneka/slot-filling-intent-detection" 
+    LOCAL_CHECKPOINT_DIR = "files/checkpoints"
+    
+    # Vocabularies to be downloaded
+    VOCABS_TO_DOWNLOAD = [
+        "word_to_id.json",
+        "full_slot_mapping.json",
+        "intent_to_id.json"
+    ]
+
+    os.makedirs(LOCAL_CHECKPOINT_DIR, exist_ok=True)
+    for vocab_file in VOCABS_TO_DOWNLOAD:
+        with st.spinner(f"Downloading {vocab_file} from Hugging Face..."):
+            path = hf_hub_download(repo_id=REPO_ID, filename=vocab_file, local_dir=LOCAL_CHECKPOINT_DIR)
+            print(path)
+
+@st.cache_resource
+def download_models():
+    REPO_ID = "archeltaneka/slot-filling-intent-detection" 
+    LOCAL_CHECKPOINT_DIR = "files/checkpoints"
+    
+    # Models to be downloaded
+    MODELS_TO_DOWNLOAD = [
+        "jointbilstm_model.pth",
+        "jointbilstm_attn_model.pth",
+        "bert_model.pth",
+        "baseline_model.joblib"
+    ]
+
+    os.makedirs(LOCAL_CHECKPOINT_DIR, exist_ok=True)
+    for model_file in MODELS_TO_DOWNLOAD:
+        with st.spinner(f"Downloading {model_file} from Hugging Face..."):
+            path = hf_hub_download(repo_id=REPO_ID, filename=model_file, local_dir=LOCAL_CHECKPOINT_DIR)
+            print(path)
+
+@st.cache_resource
 def load_all_resources():
     """Load config, vocabs and all 4 models."""
     config = load_config_file("config.yaml")
@@ -337,10 +386,34 @@ def main():
         
         > **Academic Submission:** This project was submitted for **FIT5149 - Applied Data Analysis** as part of a Master's degree at **Monash University**.
         """)
+
+        # Goals/Objectives
+        st.markdown("---")
+        st.markdown("### Goals/Objectives")
+        
+        col_left, col_right = st.columns([1, 1])
+        
+        with col_left:
+            st.markdown("""
+            #### Intent Detection
+            **The "What"**: Classification of the overall goal.
+            * **Input**: *"I want to fly from Paris to London"*
+            * **Output**: `atis_flight`
+            * **Goal**: Mapping the utterance to a single label from a predefined set of intentions.
+            """)
+            
+        with col_right:
+            st.markdown("""
+            #### Slot Filling (NER)
+            **The "Who/Where/When"**: Sequence labeling of entities.
+            * **Input**: *"Paris"* → *"London"*
+            * **Output**: `B-fromloc` → `B-toloc`
+            * **Goal**: Extracting specific parameters (slots) needed to fulfill the user's request.
+            """)
         
         # Dataset Section
         st.markdown("""
-        ### 📊 The ATIS Dataset
+        ### The ATIS Dataset
         This project uses the ATIS (Airline Travel Information Systems) dataset, a well-known benchmark dataset for slot filling and intent detection tasks. 
         """)
         col1, col2, col3 = st.columns(3)
@@ -361,9 +434,77 @@ def main():
         - *Intent:* `atis_restriction`
         - *Slots:* `what:O`, `is:O`, `the:O`, `baggage:O`, `allowance:O`
         """)
+
+        # Evaluation Metrics
+        st.markdown("---")
+        st.markdown("### Evaluation Metrics")
+        st.write("To measure model performance, we focus on both global classification and sequence-level precision.")
+
+        st.markdown("#### Intent Detection: Accuracy")
+        st.write("Since each utterance is assigned exactly one label, we use standard classification accuracy:")
+        st.latex(r"Accuracy = \frac{\text{Number of Correct Predictions}}{\text{Total Number of Samples}}")
+        
+        st.markdown("#### Slot Filling: Weighted F1-Score")
+        st.write("Slot filling is a sequence labeling task. We calculate the F1-score for each class $c$ and then compute a weighted average.")
+
+        # Detailed Slot Math
+        st.markdown("For each slot label class $c$:")
+        
+        st.latex(r"Precision_c = \frac{TP_c}{TP_c + FP_c}, \quad Recall_c = \frac{TP_c}{TP_c + FN_c}")
+        st.latex(r"F1_c = 2 \times \frac{Precision_c \times Recall_c}{Precision_c + Recall_c}")
+        
+        st.write("The final **Weighted F1** is normalized by the number of tokens $n_c$ in each class:")
+        st.latex(r"Weighted\ F1 = \frac{1}{N} \times \sum_{c \in C} n_c \times F1_c")
+        
+        st.markdown("""
+        **Where:**
+        * $TP_c$: True Positives (Correctly predicted tokens of class $c$)
+        * $FP_c$: False Positives (Tokens incorrectly predicted as class $c$)
+        * $FN_c$: False Negatives (Tokens of class $c$ predicted as other classes)
+        * $N$: Total number of tokens across all samples
+        """)
+
+        st.markdown("---")
+        st.markdown("### Project Resource Hub")
+        
+        github_repo = "https://github.com/archeltaneka/slot-filling-intent-detection"
+        hf_repo = "https://huggingface.co/archeltaneka/atis-model-weights"
+
+        res_col1, res_col2 = st.columns(2)
+        
+        with res_col1:
+            st.markdown(f"""
+                <a href="{github_repo}" target="_blank" style="text-decoration: none;">
+                    <div class="resource-card" style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); color: white; padding: 25px; border-radius: 16px; text-align: center; border: 1px solid #475569; height: 180px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <div style="font-size: 2.5rem; margin-bottom: 10px;">💻</div>
+                        <b style="font-size: 1.2rem; color: #f8fafc; font-family: 'Inter', sans-serif;">Code & Experimentation</b>
+                        <p style="font-size: 0.85rem; margin-top: 10px; color: #cbd5e1; line-height: 1.4;">
+                            Access the GitHub repository for source code, Jupyter Notebooks, and project documentation.
+                        </p>
+                    </div>
+                </a>
+            """, unsafe_allow_html=True)
+
+        with res_col2:
+            st.markdown(f"""
+                <a href="{hf_repo}" target="_blank" style="text-decoration: none;">
+                    <div class="resource-card" style="background: linear-gradient(135deg, #fffcf0 0%, #fef9c3 100%); color: #1a1a1a; padding: 25px; border-radius: 16px; text-align: center; border: 1px solid #fde047; height: 180px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <div style="font-size: 2.5rem; margin-bottom: 10px;">🤗</div>
+                        <b style="font-size: 1.2rem; color: #854d0e; font-family: 'Inter', sans-serif;">Model Weights</b>
+                        <p style="font-size: 0.85rem; margin-top: 10px; color: #713f12; line-height: 1.4;">
+                            Visit Hugging Face Hub to view the trained .pth checkpoints used for real-time inference in this app.
+                        </p>
+                    </div>
+                </a>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.info(f"**Note:** To ensure smooth deployment on Streamlit Cloud, large model weights are pulled dynamically from Hugging Face at runtime using the `huggingface_hub` library.")
     
     with tab_analysis:
         with st.spinner("Loading models..."):
+            download_vocabularies()
+            download_models()
             config, models, vocabs, tokenizer, device = load_all_resources()
                 
         st.markdown("### 🔍 About the Models")
