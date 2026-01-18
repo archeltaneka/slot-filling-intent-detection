@@ -12,10 +12,10 @@ from src.data.builder import SLUDataBuilder
 from src.data.data_utils import SLUDataset, BERTDataset, build_vocab, get_collate_fn, bert_collate_fn, save_vocab
 from src.model.baseline import BaselineModel
 from src.model.models import JointBiLSTM, JointBiLSTMAttn, JointBERTModel
-from src.model.trainer import JointTrainer, BERTTrainer
+from src.train.trainer import JointTrainer, BERTTrainer
 from src.model.model_utils import load_bert_tokenizer, load_embeddings, download_glove
 from src.pipeline import DataPipeline
-from src.train_utils import run_training_loop
+from src.train.train_utils import run_training_loop
 from src.evaluation import SLUEvaluator
 from src.utils import load_config_file, save_model
 
