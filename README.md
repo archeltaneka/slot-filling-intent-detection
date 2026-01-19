@@ -127,4 +127,14 @@ slot-filling-intent-detection/
 ├── train.py                    # Training script
 ```
 
+## 🍿Demo Video
+[streamlit-app-2026-01-19-19-36-04.webm](https://github.com/user-attachments/assets/b507bb2e-02a8-4a82-b31d-9423095efb7b)
+
+## 📄 License
+
+MIT License © 2025 Archel Taneka
+
+## ⚙️ Want to contribute?
+
+PRs, suggestions, and issues are welcome.
 
