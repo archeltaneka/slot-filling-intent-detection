@@ -12,6 +12,8 @@ This repository contains an end-to-end Spoken Language Understanding (SLU) produ
 - Intent Classification: Determining what the user wants to do (e.g., flight query).
 - Slot Filling: Identifying key entities in the sentence (e.g., origin, destination, date, etc.).
 
+🔗 Live App: https://archeltaneka-slot-filling-intent-detection-app-vcbymi.streamlit.app/
+
 ## 🚀 Features
 
 - Joint Modeling: Simultaneously predicts intents and slot labels using shared representations.
