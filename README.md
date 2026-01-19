@@ -88,5 +88,43 @@ We maintain high code quality through automated testing and continuous integrati
 - Automated Workflow: GitHub Actions runs the test suite on every Pull Request to ensure no regressions.
 - Test Coverage (WIP): We are currently integrating Codecov to track test coverage and identify untested code paths.
 
+## 🛠 Project Structure
+
+```
+slot-filling-intent-detection/
+├── data/                      # Raw data files
+├── files/
+│   ├── checkpoints/           # Saved model checkpoints
+│   └── embedding/             # Created when training models
+├── src/
+│   ├── data/
+│   │   ├── __init__.py
+│   │   ├── builder.py          # Transform raw data 
+│   │   ├── data_utils.py       # Data processing utilities
+│   │   ├── feature_engineer.py # Feature engineer transformed data
+│   │   ├── loader.py           # Data loader
+│   │   └── splitter.py         # Data splitter using group-aware splitter
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── baseline.py         # CRF baseline model
+│   │   ├── model_utils.py      # Model utilities
+│   │   ├── models.py           # Joint BILSTM and BERT models
+│   ├── train/
+│   │   ├── __init__.py
+│   │   ├── train_utils.py      # Model training utilities
+│   │   ├── trainer.py          # Model trainer
+│   └── __init__.py
+│   └── evaluation.py           # Model evaluation
+│   └── inference.py            # Model inference
+│   └── pipeline.py             # Data transformation pipeline
+│   └── utils.py                # General utilities
+├── tests/
+├── app.py                      # Streamlit web app
+├── config.yaml                 # Model configuration file
+├── download_models.py          # Download pre-trained models
+├── requirements.txt
+├── README.md
+├── train.py                    # Training script
+```
 
 
