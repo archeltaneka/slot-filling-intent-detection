@@ -46,11 +46,10 @@ def create_model_row_html(model_name, tokens, data, mode):
     html = f"""
     <div style="
         display: flex; 
-        align-items: stretch; 
+        flex-direction: row;
         background: white;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
-        overflow: hidden;
         margin-bottom: 12px;
         transition: box-shadow 0.2s ease;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -66,23 +65,30 @@ def create_model_row_html(model_name, tokens, data, mode):
             padding: 16px 12px;
         ">
             <div style="
-                font-weight: 600;
-                color: {color};
-                font-size: 13px;
-                text-align: center;
-                letter-spacing: 0.3px;
-            ">
-                {model_name}
-            </div>
+            width: 120px;
+            min-width: 120px;
+            background: linear-gradient(135deg, {color}15 0%, {color}05 100%);
+            border-right: 3px solid {color};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            font-weight: 600;
+            color: {color};
+            font-size: 12px;
+            text-align: center;
+        ">
+            {model_name}
+        </div>
         </div>
         <div style="
             display: flex; 
             flex-wrap: wrap; 
-            gap: 8px; 
-            flex-grow: 1;
-            padding: 16px 20px;
+            gap: 10px; 
+            padding: 15px;
             align-items: center;
             background: #fafbfc;
+            width: 100%;
         ">
     """
     
@@ -123,6 +129,10 @@ def create_model_row_html(model_name, tokens, data, mode):
             
             html += f"""
                 <div style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 4px;
                     text-align: center;
                     background: white;
                     border-radius: 6px;
@@ -139,6 +149,7 @@ def create_model_row_html(model_name, tokens, data, mode):
                         font-weight: 500;
                         font-size: 13px;
                         font-family: 'SF Mono', 'Consolas', monospace;
+                        white-space: nowrap;
                     ">{token}</div>
                     <div style="
                         font-size: 10px; 
@@ -162,6 +173,10 @@ def create_model_row_html(model_name, tokens, data, mode):
             
             html += f"""
                 <div style="
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 4px;
                     text-align: center;
                     background: white;
                     border-radius: 6px;

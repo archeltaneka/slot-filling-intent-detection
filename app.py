@@ -683,7 +683,7 @@ def main():
                 components.html(
                     create_model_row_html(name, tokens, processed_data, "slots"), 
                     height=150, 
-                    scrolling=False
+                    scrolling=True
                 )
 
         # SECTION: ATTENTION
@@ -702,7 +702,7 @@ def main():
             # Check if the model actually supports attention visualization
             if display_results[name]:
                 st.caption(f"**{name}:** {attn_desc[name]}")
-                components.html(create_model_row_html(name, tokens, display_results[name], "attention"), height=110)
+                components.html(create_model_row_html(name, tokens, display_results[name], "attention"), height=110, scrolling=True)
             elif run_btn:
                 st.text(f"Notice: {name} uses internal feature importance rather than attention heads.")
 
