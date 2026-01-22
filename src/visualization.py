@@ -46,7 +46,7 @@ def create_model_row_html(model_name, tokens, data, mode):
     html = f"""
     <div style="
         display: flex; 
-        flex-direction: row;
+        flex-wrap: nowrap;
         background: white;
         border: 1px solid #e5e7eb;
         border-radius: 8px;
@@ -77,6 +77,8 @@ def create_model_row_html(model_name, tokens, data, mode):
             color: {color};
             font-size: 12px;
             text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         ">
             {model_name}
         </div>
