@@ -284,6 +284,26 @@ st.markdown("""
         font-size: 1.2rem;
         margin-bottom: 10px;
     }
+    @media (max-width: 640px) {
+        /* Reduce main container padding for mobile */
+        .block-container {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+        
+        /* Adjust the model name column in the visualization */
+        div[style*="width: 100px"] {
+            width: 70px !important;
+            min-width: 70px !important;
+            font-size: 9px !important;
+        }
+
+        /* Make tabs scrollable horizontally on mobile */
+        .stTabs [data-baseweb="tab-list"] {
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -351,6 +371,19 @@ def load_all_resources():
     }
     
     return config, models, vocabs, tokenizer, device
+
+def calculate_dynamic_height(token_count, mode="slots"):
+    """Estimates the height needed for the HTML component to prevent scrolling."""
+    # Base height for a single row
+    base_height = 90 
+    
+    # On mobile (Streamlit doesn't give screen width easily, so we estimate)
+    # If a sentence is long, it will likely wrap.
+    if token_count > 6:
+        rows = (token_count // 5) + 1 # Estimate tokens per row on mobile
+        return max(base_height, rows * 65 if mode == "slots" else rows * 50)
+    
+    return base_height
 
 def main():
     # Initialize the session state for the input if it doesn't exist
@@ -679,11 +712,13 @@ def main():
                 processed_data = display_results[name].copy()
                 processed_data['slots'] = display_slots
 
+                dyn_height = calculate_dynamic_height(len(tokens), mode="slots")
+
                 st.caption(f"**{name}:** {slot_desc[name]}")
                 components.html(
                     create_model_row_html(name, tokens, processed_data, "slots"), 
-                    height=150, 
-                    scrolling=False
+                    height=dyn_height, 
+                    scrolling=True
                 )
 
         # SECTION: ATTENTION
@@ -699,10 +734,11 @@ def main():
             'JointBERT': "Shows a pooled summary of attention across multiple Transformer heads for the final prediction."
         }
         for name in model_names:
+            dyn_height = calculate_dynamic_height(len(tokens), mode="attention")
             # Check if the model actually supports attention visualization
             if display_results[name]:
                 st.caption(f"**{name}:** {attn_desc[name]}")
-                components.html(create_model_row_html(name, tokens, display_results[name], "attention"), height=110)
+                components.html(create_model_row_html(name, tokens, display_results[name], "attention"), height=dyn_height, scrolling=True)
             elif run_btn:
                 st.text(f"Notice: {name} uses internal feature importance rather than attention heads.")
 
